@@ -1,7 +1,6 @@
 (function () {
   'use strict';
 
-  
   const $ = id => document.getElementById(id);
   const PEND_SITS = ['FALTA ASSINAR', 'SEM PAGAR'];
   const STATUS_KEYS = ['ATIVO', 'PENDENCIA', 'INATIVO'];
@@ -9,8 +8,6 @@
   const TONE_ORDER = { act: 0, pend: 1, exit: 2, old: 3 };
   const SMALL_WORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
 
-   
- 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   const brl = (v, d = 2) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: d, maximumFractionDigits: d });
@@ -18,7 +15,6 @@
   const pct = (a, b, d = 1) => b > 0 ? ((a / b) * 100).toFixed(d).replace('.', ',') + '%' : '0%';
   const titleCase = s => String(s).toLowerCase().split(' ').map((w, i) => (i > 0 && SMALL_WORDS.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const sentence = s => { s = String(s).toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
-  
   const shortLabel = s => {
     s = String(s || '');
     const slash = s.indexOf(' / ');
@@ -27,7 +23,6 @@
     return titleCase(out);
   };
   const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-
 
   const UF_BY_NAME = {
     'acre': 'AC', 'alagoas': 'AL', 'amapa': 'AP', 'amazonas': 'AM', 'bahia': 'BA', 'ceara': 'CE',
@@ -46,14 +41,11 @@
     return UF_BY_NAME[n] || '';
   }
   const ufFullName = uf => UF_NAMES[uf] || '';
- 
   const gkey = (city, uf) => norm(city) + '|' + (uf || '');
   const cityDisplay = (cl, uf) => uf ? `${cl} (${uf})` : cl;
   const cityLabelFromKey = key => { const g = cityGroupsByKey[key]; return g ? cityDisplay(g.cl, g.uf) : key; };
 
-
   const DATA_RAW = [];;
-
 
   const ALIASES = {
     id: ['id', 'cliid', 'codigo', 'cod', 'cod cliente', 'codigo cliente'],
@@ -70,7 +62,6 @@
     bai: ['bai', 'bairro', 'setor', 'distrito', 'regiao']
   };
 
-  
   const NULLISH = /^(null|nan|none|undefined)$/i;
   const denull = v => { const s = String(v == null ? '' : v).trim(); return NULLISH.test(s) ? '' : s; };
 
@@ -78,12 +69,10 @@
     const map = {};
     Object.keys(row).forEach(k => { map[norm(k)] = row[k]; });
     const get = f => { for (const a of ALIASES[f]) { if (map[a] !== undefined && map[a] !== '') return map[a]; } return ''; };
-    
     let s = get('s');
     if (s === '' && colB !== undefined && denull(colB) !== '') s = colB;
     return { id: get('id'), n: get('n'), c: get('c'), uf: get('uf'), s, r: get('r'), g: get('g'), m: get('m'), y: get('y'), x: get('x'), a: get('a'), bai: get('bai') };
   }
-
 
   function parseMoney(v) {
     if (typeof v === 'number') return isFinite(v) ? v : 0;
@@ -97,21 +86,19 @@
     return isFinite(n) ? n : 0;
   }
 
-
   function parseYear(v) {
     if (v instanceof Date) return isNaN(v) ? 0 : v.getFullYear();
     const m = String(v == null ? '' : v).match(/(?:19|20)\d{2}/);
     return m ? +m[0] : 0;
   }
 
-  
   function processData(items, colBValues) {
     const base = items.map((row, idx) => pick(row, colBValues ? colBValues[idx] : undefined))
       .filter(r => r.n !== '' || r.s !== '' || r.c !== '')
       .map((r, i) => {
         const sit = denull(r.s).toUpperCase() || 'SEM SITUAÇÃO';
-        let x = parseYear(r.x);
-        if (!x) { const mm = sit.match(/SAIU\s*(\d{4})/); if (mm) x = +mm[1]; }
+        const mm = sit.match(/SAIU\s*(\d{4})/);
+        let x = mm ? +mm[1] : parseYear(r.x);
         return { i, raw: r, sit, y: parseYear(r.y), x };
       });
 
@@ -143,15 +130,14 @@
     });
   }
 
-  
   let dataset = [];
   let filteredData = [];
-  let cityContext = [];   
+  let cityContext = [];
   let mosaicRows = [];
   let stats = {};
   const charts = {};
   let animate = true;
-  let map = null, markersLayer = null; 
+  let map = null, markersLayer = null;
   let mapAddressMarkers = {};
   let mapGeocodeRun = 0;
   let cityGeocodeRun = 0;
@@ -187,9 +173,8 @@
   }
   const view = { page: 1, pageSize: 12, sortKey: 'id', sortDir: 1, mosaicSort: 'cadastro', ramoMetric: 'qtd', tone: null, cities: new Set() };
   let citiesReady = false;
-  let cityGroups = [];           
-  const cityGroupsByKey = {};    
-
+  let cityGroups = [];
+  const cityGroupsByKey = {};
 
   let noticeTimer;
   function hideNotice() { const el = $('notice'); el.className = 'hidden'; el.innerHTML = ''; }
@@ -206,7 +191,6 @@
     el.innerHTML = '<span>' + esc(msg) + '</span><button type="button" class="shrink-0 opacity-70 hover:opacity-100" aria-label="Fechar aviso" data-action="close-notice"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>';
     if (type !== 'error') noticeTimer = setTimeout(hideNotice, 7000);
   }
-
 
   function fillSelect(id, allValue, allLabel, values, labelFn) {
     const sel = $(id), prev = sel.value;
@@ -241,7 +225,6 @@
     fillSelect('filter-grupo', 'TODOS', 'Todos os grupos', uniq('g'));
   }
 
- 
   function cidadeCounts() {
     const f = readFilters();
     const counts = {};
@@ -302,7 +285,6 @@
       && (f.grupo === 'TODOS' || r.g === f.grupo);
   }
 
-
   function toggleFilter(id, value) {
     const sel = $(id);
     if (![].some.call(sel.options, o => o.value === value)) return;
@@ -311,7 +293,6 @@
     applyFilters();
   }
 
-  
   function toggleCity(key) {
     view.cities = (view.cities.size === 1 && view.cities.has(key)) ? new Set() : new Set([key]);
     view.page = 1;
@@ -350,10 +331,9 @@
     renderRiscoReceita();
     renderCharts(f);
     renderTable();
-    if (map) renderMap(f); 
+    if (map) renderMap(f);
   }
 
-  
   function renderKPIs(f) {
     const s = stats;
     $('kpi-total').textContent = num(s.total);
@@ -371,7 +351,6 @@
     });
   }
 
- 
   function renderMosaico() {
     const box = $('mosaico-container');
     const counts = { act: 0, pend: 0, exit: 0, old: 0 };
@@ -385,10 +364,11 @@
     }
     mosaicRows = filteredData.slice();
     if (view.mosaicSort === 'status') mosaicRows.sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone] || a.k - b.k);
+    if (view.mosaicSort === 'saida') mosaicRows.sort((a, b) => (b.x || 0) - (a.x || 0) || a.k - b.k);
 
     const html = mosaicRows.map((r, i) => `<span class="sq f-${r.tone}" data-i="${i}" style="--i:${i}"></span>`).join('');
     const label = `Mosaico com ${num(filteredData.length)} clientes: ${counts.act} ativos, ${counts.pend} com pendência, ${counts.exit + counts.old} inativos.`;
-    const n = filteredData.length, size = n <= 60 ? 26 : n <= 200 ? 18 : n <= 600 ? 14 : 11;   // poucos clientes = quadrados maiores
+    const n = filteredData.length, size = n <= 60 ? 26 : n <= 200 ? 18 : n <= 600 ? 14 : 11;
     box.innerHTML = `<div class="grid-mosaico" style="--sq:${size}px" role="img" aria-label="${esc(label)}">${html}</div>`;
     applyHighlight();
   }
@@ -405,7 +385,11 @@
   function showTip(sq, x, y) {
     const r = mosaicRows[+sq.dataset.i];
     if (!r) return;
-    tip.innerHTML = `<strong>${esc(r.n)}</strong> <span class="text-slate-400">${esc(cityDisplay(r.cl, r.uf))}</span><br>${esc(r.sl)}${r.y ? ', cliente desde ' + r.y : ''}<br>Mensalidade: <b>${brl(r.m)}</b>`;
+    const isInactive = !r.isAtivo && !r.isPend;
+    const statusLine = (isInactive && r.x)
+      ? (r.y ? `Cliente desde ${r.y}, saiu em ${r.x}` : `Saiu em ${r.x}`)
+      : `${esc(r.sl)}${r.y ? ', cliente desde ' + r.y : ''}`;
+    tip.innerHTML = `<strong>${esc(r.n)}</strong> <span class="text-slate-400">${esc(cityDisplay(r.cl, r.uf))}</span><br>${statusLine}<br>Mensalidade: <b>${brl(r.m)}</b>`;
     tip.hidden = false;
     const w = tip.offsetWidth, h = tip.offsetHeight;
     tip.style.left = Math.max(8, Math.min(x + 14, window.innerWidth - w - 8)) + 'px';
@@ -419,7 +403,6 @@
   document.addEventListener('pointerdown', onPointer);
   document.addEventListener('scroll', () => { tip.hidden = true; }, { passive: true });
 
-  
   function renderInsights(f) {
     const ul = $('readout-list'), s = stats;
     if (!s.total) { ul.innerHTML = '<li class="ins ins-info">Sem clientes neste recorte. Ajuste os filtros para ver as leituras.</li>'; return; }
@@ -464,7 +447,6 @@
     ul.innerHTML = items.map(([t, h]) => `<li class="ins ins-${t}">${h}</li>`).join('');
   }
 
-
   function renderRiscoReceita() {
     const pendRows = filteredData.filter(r => r.isPend);
     const exitRows = filteredData.filter(r => !r.isAtivo && !r.isPend);
@@ -476,7 +458,6 @@
     $('risco-saida-count').textContent = num(exitRows.length);
   }
 
- 
   const centerText = {
     id: 'centerText',
     afterDatasetsDraw(chart) {
@@ -538,7 +519,6 @@
     if (!window.Chart) return;
     const s = stats;
 
-    
     makeChart('chart-status', {
       type: 'doughnut',
       plugins: [centerText],
@@ -561,7 +541,6 @@
       })
     });
 
-    
     const cMap = {};
     cityContext.forEach(r => {
       const k = gkey(r.c, r.uf);
@@ -614,7 +593,6 @@
       })
     });
 
-  
     const rMap = {};
     filteredData.filter(r => r.isAtivo).forEach(r => { const o = rMap[r.r] || (rMap[r.r] = { q: 0, m: 0 }); o.q++; o.m += r.m; });
     const key = view.ramoMetric === 'mrr' ? 'm' : 'q';
@@ -641,7 +619,6 @@
       })
     });
 
-    
     const inMap = {}, outMap = {};
     let minY = 0, maxY = 0;
     filteredData.forEach(r => {
@@ -677,10 +654,8 @@
     });
   }
 
-
   let mapMetric = 'clients';
   let mapMarkersByCity = {};
-
 
 
   let mapBaseLayer = null;
@@ -724,13 +699,11 @@
       attributionControl: true
     }).setView([-14.2, -51.9], 4.3);
 
-  
     mapBaseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19
     }).addTo(map);
 
-    
     mapSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri',
       maxZoom: 19
@@ -840,7 +813,6 @@
     const run = ++mapGeocodeRun;
     if (!rows.length || !map) return;
 
-  
     const groups = new Map();
     rows.forEach(r => {
       const local = String(r.address || r.bairro || '').trim();
@@ -883,7 +855,6 @@
             }
           }
         } catch (_) {}
-        // Respeita o limite público do Nominatim: uma consulta por segundo.
         await new Promise(resolve => setTimeout(resolve, 1050));
       }
 
@@ -1025,7 +996,6 @@
       mapMarkersByCity[k] = marker;
     });
 
-  
     geocodeMapAddresses(addressRows);
 
     $('map-stat-cities').textContent = num(keys.filter(k => CITY_COORDS[cityKey(byCity[k].c, byCity[k].uf)]).length);
@@ -1099,7 +1069,6 @@
     }
   }
 
- 
   function getSearchedData() {
     const terms = norm($('table-search').value).split(/\s+/).filter(Boolean);
     const rows = terms.length ? filteredData.filter(r => terms.every(t => r._q.includes(t))) : filteredData.slice();
@@ -1162,11 +1131,9 @@
     updateSortHeaders();
   }
 
-  
   function exportCSV() {
     const rows = getSearchedData();
     if (!rows.length) { notify('Não há clientes para exportar com os filtros atuais.', 'info'); return; }
-    
     const cell = v => { let t = String(v == null ? '' : v); if (/^[=+\-@]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
     const headers = ['ID', 'Cliente', 'Cidade', 'UF', 'Situação', 'Grupo', 'Ramo', 'Cliente desde', 'Mensalidade'];
     const lines = rows.map(r => [cell(r.id), cell(r.n), cell(r.cl), cell(r.uf), cell(r.sl), cell(r.g), cell(r.r), r.y || '', r.m.toFixed(2).replace('.', ',')].join(';'));
@@ -1179,7 +1146,6 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  
   function setSource(name, n) {
     $('source-name').textContent = name;
     $('source-count').textContent = n ? `(${num(n)} registros)` : '';
@@ -1198,14 +1164,13 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
         if (!json.length) throw new Error('A primeira aba da planilha está vazia.');
-
         const raw2d = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
         const colBValues = json.map((_, i) => (raw2d[i + 1] ? raw2d[i + 1][1] : ''));
         const headers = Object.keys(json[0]).map(norm);
         if (!ALIASES.n.some(a => headers.includes(a))) throw new Error('Não encontrei a coluna "Cliente". Confira se a primeira linha da planilha tem os nomes das colunas.');
         const hasStatusHeader = ALIASES.s.some(a => headers.includes(a));
         const hasStatusColB = colBValues.some(v => denull(v) !== '');
-        if (!hasStatusHeader && !hasStatusColB) throw new Error('Não encontrei a coluna "Situação" nem dados na coluna B. A situação de cada cliente (ATIVO, FALTA ASSINAR, SEM PAGAR, SAIU AAAA...) precisa estar numa coluna chamada "Situação" ou na coluna B da planilha.');
+        if (!hasStatusHeader && !hasStatusColB) throw new Error('Não encontrei a coluna "Situação" nem dados na coluna B. A situação de cada cliente (ATIVO, FALTA ASSINAR, SEM PAGAR, SEM PAGAR, SAIU AAAA...) precisa estar numa coluna chamada "Situação" ou na coluna B da planilha.');
         const rows = processData(json, colBValues);
         if (!rows.length) throw new Error('Nenhuma linha com dados foi encontrada.');
 
@@ -1228,7 +1193,6 @@
     };
     reader.readAsArrayBuffer(file);
   }
-
 
   function setupListeners() {
     setupMapControls();
@@ -1308,7 +1272,6 @@
     $('excel-file').addEventListener('change', handleFileUpload);
   }
 
-
   document.addEventListener('DOMContentLoaded', () => {
     setupChartDefaults();
     dataset = processData(DATA_RAW);
@@ -1318,12 +1281,10 @@
     applyFilters();
     animate = false;
     if (!window.Chart) notify('Os gráficos não carregaram (biblioteca Chart.js indisponível). Verifique a conexão; o restante do painel segue funcionando.', 'error');
-    
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => renderCharts(readFilters()));
   });
 
 })();
-
 
 const CLIENT_TEMPLATE_XLSX_BASE64 = "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";
 
