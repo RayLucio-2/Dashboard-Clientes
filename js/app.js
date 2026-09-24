@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-
+  
   const $ = id => document.getElementById(id);
   const PEND_SITS = ['FALTA ASSINAR', 'SEM PAGAR'];
   const STATUS_KEYS = ['ATIVO', 'PENDENCIA', 'INATIVO'];
@@ -9,6 +9,8 @@
   const TONE_ORDER = { act: 0, pend: 1, exit: 2, old: 3 };
   const SMALL_WORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
 
+   
+ 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   const brl = (v, d = 2) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: d, maximumFractionDigits: d });
@@ -16,7 +18,7 @@
   const pct = (a, b, d = 1) => b > 0 ? ((a / b) * 100).toFixed(d).replace('.', ',') + '%' : '0%';
   const titleCase = s => String(s).toLowerCase().split(' ').map((w, i) => (i > 0 && SMALL_WORDS.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const sentence = s => { s = String(s).toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
-
+  
   const shortLabel = s => {
     s = String(s || '');
     const slash = s.indexOf(' / ');
@@ -25,6 +27,7 @@
     return titleCase(out);
   };
   const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
 
   const UF_BY_NAME = {
     'acre': 'AC', 'alagoas': 'AL', 'amapa': 'AP', 'amazonas': 'AM', 'bahia': 'BA', 'ceara': 'CE',
@@ -43,13 +46,14 @@
     return UF_BY_NAME[n] || '';
   }
   const ufFullName = uf => UF_NAMES[uf] || '';
-  // Chave única por cidade: o mesmo nome de cidade existe em mais de um estado
-  // (ex.: Formosa-GO e Formosa do Rio Preto-BA), então cidade sozinha não basta.
+ 
   const gkey = (city, uf) => norm(city) + '|' + (uf || '');
   const cityDisplay = (cl, uf) => uf ? `${cl} (${uf})` : cl;
   const cityLabelFromKey = key => { const g = cityGroupsByKey[key]; return g ? cityDisplay(g.cl, g.uf) : key; };
 
+
   const DATA_RAW = [];;
+
 
   const ALIASES = {
     id: ['id', 'cliid', 'codigo', 'cod', 'cod cliente', 'codigo cliente'],
@@ -62,9 +66,11 @@
     m:  ['m', 'mensalidade', 'valor', 'valor mensalidade', 'mrr'],
     y:  ['y', 'ano', 'desde', 'cliente desde', 'ano de entrada', 'ano entrada', 'ano de cadastro', 'ano cadastro', 'cadastro', 'data cadastro'],
     x:  ['x', 'saida', 'ano de saida', 'ano saida', 'saiu em'],
-    a:  ['a', 'endereco', 'endereço', 'endereco completo', 'logradouro', 'address']
+    a:  ['a', 'endereco', 'endereço', 'endereco completo', 'logradouro', 'address'],
+    bai: ['bai', 'bairro', 'setor', 'distrito', 'regiao']
   };
 
+  
   const NULLISH = /^(null|nan|none|undefined)$/i;
   const denull = v => { const s = String(v == null ? '' : v).trim(); return NULLISH.test(s) ? '' : s; };
 
@@ -75,10 +81,10 @@
     
     let s = get('s');
     if (s === '' && colB !== undefined && denull(colB) !== '') s = colB;
-    return { id: get('id'), n: get('n'), c: get('c'), uf: get('uf'), s, r: get('r'), g: get('g'), m: get('m'), y: get('y'), x: get('x'), a: get('a') };
+    return { id: get('id'), n: get('n'), c: get('c'), uf: get('uf'), s, r: get('r'), g: get('g'), m: get('m'), y: get('y'), x: get('x'), a: get('a'), bai: get('bai') };
   }
 
-  
+
   function parseMoney(v) {
     if (typeof v === 'number') return isFinite(v) ? v : 0;
     let s = String(v == null ? '' : v).replace(/[^\d,.\-]/g, '');
@@ -91,14 +97,15 @@
     return isFinite(n) ? n : 0;
   }
 
- 
+
   function parseYear(v) {
     if (v instanceof Date) return isNaN(v) ? 0 : v.getFullYear();
     const m = String(v == null ? '' : v).match(/(?:19|20)\d{2}/);
     return m ? +m[0] : 0;
   }
 
-    function processData(items, colBValues) {
+  
+  function processData(items, colBValues) {
     const base = items.map((row, idx) => pick(row, colBValues ? colBValues[idx] : undefined))
       .filter(r => r.n !== '' || r.s !== '' || r.c !== '')
       .map((r, i) => {
@@ -128,21 +135,23 @@
         g: denull(r.g) || 'Outros',
         m: parseMoney(r.m),
         address: denull(r.a),
+        bairro: denull(r.bai),
         y, x
       };
-      row._q = norm([row.id, row.n, row.cl, row.uf, row.sl, row.g, row.r, row.y || ''].join(' '));
+      row._q = norm([row.id, row.n, row.cl, row.uf, row.sl, row.g, row.r, row.y || '', row.bairro].join(' '));
       return row;
     });
   }
 
+  
   let dataset = [];
   let filteredData = [];
-  let cityContext = [];   // recorte sem o filtro de cidade (para comparar cidades)
+  let cityContext = [];   
   let mosaicRows = [];
   let stats = {};
   const charts = {};
   let animate = true;
-  let map = null, markersLayer = null; // mapa (Leaflet), inicializado só quando a aba Mapa é aberta pela 1ª vez
+  let map = null, markersLayer = null; 
   let mapAddressMarkers = {};
   let mapGeocodeRun = 0;
   let cityGeocodeRun = 0;
@@ -178,8 +187,9 @@
   }
   const view = { page: 1, pageSize: 12, sortKey: 'id', sortDir: 1, mosaicSort: 'cadastro', ramoMetric: 'qtd', tone: null, cities: new Set() };
   let citiesReady = false;
-  let cityGroups = [];           // [{key, c, cl, uf}] — um por combinação cidade+UF na base
-  const cityGroupsByKey = {};    // key -> {c, cl, uf}
+  let cityGroups = [];           
+  const cityGroupsByKey = {};    
+
 
   let noticeTimer;
   function hideNotice() { const el = $('notice'); el.className = 'hidden'; el.innerHTML = ''; }
@@ -197,7 +207,8 @@
     if (type !== 'error') noticeTimer = setTimeout(hideNotice, 7000);
   }
 
-   function fillSelect(id, allValue, allLabel, values, labelFn) {
+
+  function fillSelect(id, allValue, allLabel, values, labelFn) {
     const sel = $(id), prev = sel.value;
     sel.innerHTML = '';
     sel.add(new Option(allLabel, allValue));
@@ -230,7 +241,7 @@
     fillSelect('filter-grupo', 'TODOS', 'Todos os grupos', uniq('g'));
   }
 
-
+ 
   function cidadeCounts() {
     const f = readFilters();
     const counts = {};
@@ -291,7 +302,7 @@
       && (f.grupo === 'TODOS' || r.g === f.grupo);
   }
 
-   
+
   function toggleFilter(id, value) {
     const sel = $(id);
     if (![].some.call(sel.options, o => o.value === value)) return;
@@ -300,7 +311,8 @@
     applyFilters();
   }
 
-   function toggleCity(key) {
+  
+  function toggleCity(key) {
     view.cities = (view.cities.size === 1 && view.cities.has(key)) ? new Set() : new Set([key]);
     view.page = 1;
     applyFilters();
@@ -338,7 +350,7 @@
     renderRiscoReceita();
     renderCharts(f);
     renderTable();
-    if (map) renderMap(f); // só atualiza o mapa se a aba já foi aberta ao menos uma vez
+    if (map) renderMap(f); 
   }
 
   
@@ -407,7 +419,7 @@
   document.addEventListener('pointerdown', onPointer);
   document.addEventListener('scroll', () => { tip.hidden = true; }, { passive: true });
 
-  /* ---------- Leituras do recorte ---------- */
+  
   function renderInsights(f) {
     const ul = $('readout-list'), s = stats;
     if (!s.total) { ul.innerHTML = '<li class="ins ins-info">Sem clientes neste recorte. Ajuste os filtros para ver as leituras.</li>'; return; }
@@ -452,7 +464,7 @@
     ul.innerHTML = items.map(([t, h]) => `<li class="ins ins-${t}">${h}</li>`).join('');
   }
 
-  
+
   function renderRiscoReceita() {
     const pendRows = filteredData.filter(r => r.isPend);
     const exitRows = filteredData.filter(r => !r.isAtivo && !r.isPend);
@@ -526,6 +538,7 @@
     if (!window.Chart) return;
     const s = stats;
 
+    
     makeChart('chart-status', {
       type: 'doughnut',
       plugins: [centerText],
@@ -548,7 +561,7 @@
       })
     });
 
-   
+    
     const cMap = {};
     cityContext.forEach(r => {
       const k = gkey(r.c, r.uf);
@@ -580,7 +593,6 @@
       })
     });
 
-   
     const sMap = {}, sTone = {};
     filteredData.forEach(r => { sMap[r.s] = (sMap[r.s] || 0) + 1; sTone[r.s] = r.statusGeral; });
     const topS = Object.keys(sMap).sort((a, b) => sMap[b] - sMap[a]).slice(0, 8);
@@ -629,7 +641,7 @@
       })
     });
 
-  
+    
     const inMap = {}, outMap = {};
     let minY = 0, maxY = 0;
     filteredData.forEach(r => {
@@ -665,11 +677,11 @@
     });
   }
 
-  
+
   let mapMetric = 'clients';
   let mapMarkersByCity = {};
 
-  
+
 
   let mapBaseLayer = null;
   let mapSatelliteLayer = null;
@@ -712,7 +724,7 @@
       attributionControl: true
     }).setView([-14.2, -51.9], 4.3);
 
-   
+  
     mapBaseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19
@@ -768,15 +780,20 @@
   function mapPopup(cityLabel, o, addressRow = null) {
     if (addressRow) {
       const statusLabel = addressRow.isAtivo ? 'Ativo' : addressRow.isPend ? 'Pendência' : 'Inativo';
+      const hasAddress = !!addressRow.address;
+      const locLine = hasAddress ? addressRow.address : `Setor ${addressRow.bairro}`;
+      const precisionNote = hasAddress
+        ? 'Localização obtida a partir do endereço informado na planilha.'
+        : 'Localização aproximada, baseada no bairro/setor informado na planilha (sem endereço completo).';
       return `<div>
         <div style="font-size:15px;font-weight:800;margin-bottom:5px;color:#fff">${esc(addressRow.n)}</div>
         <div style="color:#94a3b8;margin-bottom:8px">${esc(cityLabel)} · <b style="color:${C[addressRow.tone] || C.old}">${statusLabel}</b></div>
-        <div style="font-size:12px;line-height:1.45;color:#cbd5e1;margin-bottom:8px">📍 ${esc(addressRow.address)}</div>
+        <div style="font-size:12px;line-height:1.45;color:#cbd5e1;margin-bottom:8px">📍 ${esc(locLine)}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 12px">
           <span>💰 Mensalidade <b>${brl(addressRow.m)}</b></span>
           <span>🆔 Cliente <b>${esc(addressRow.id)}</b></span>
         </div>
-        <div style="margin-top:8px;font-size:10px;color:#64748b">Localização obtida a partir do endereço informado na planilha.</div>
+        <div style="margin-top:8px;font-size:10px;color:#64748b">${precisionNote}</div>
       </div>`;
     }
     const total = o.a + o.p + o.i;
@@ -806,7 +823,7 @@
   }
 
   function addAddressMarker(row, coord) {
-    if (!map || !coord || !row.address) return null;
+    if (!map || !coord || (!row.address && !row.bairro)) return null;
     const key = String(row.k) + '|' + String(row.id);
     if (mapAddressMarkers[key]) {
       mapAddressMarkers[key].setLatLng(coord);
@@ -823,12 +840,12 @@
     const run = ++mapGeocodeRun;
     if (!rows.length || !map) return;
 
-    
+  
     const groups = new Map();
     rows.forEach(r => {
-      const rawAddress = String(r.address || '').trim();
-      if (!rawAddress) return;
-      const query = [rawAddress, r.cl, ufFullName(r.uf) || r.uf, 'Brasil'].filter(Boolean).join(', ');
+      const local = String(r.address || r.bairro || '').trim();
+      if (!local) return;
+      const query = [local, r.cl, ufFullName(r.uf) || r.uf, 'Brasil'].filter(Boolean).join(', ');
       const key = norm(query);
       if (!groups.has(key)) groups.set(key, { query, rows: [] });
       groups.get(key).rows.push(r);
@@ -866,7 +883,7 @@
             }
           }
         } catch (_) {}
-      
+        // Respeita o limite público do Nominatim: uma consulta por segundo.
         await new Promise(resolve => setTimeout(resolve, 1050));
       }
 
@@ -884,7 +901,7 @@
       const totalWithAddress = rows.length;
       const el = $('mapa-sem-coord');
       if (el && totalWithAddress) {
-        el.textContent = `${num(locatedClients)} de ${num(totalWithAddress)} clientes com endereço localizado · ${num(unresolved)} sem localização exata`;
+        el.textContent = `${num(locatedClients)} de ${num(totalWithAddress)} clientes localizados por endereço/setor · ${num(unresolved)} sem localização exata`;
       }
     }
   }
@@ -980,7 +997,7 @@
     const q = norm($('map-city-search') ? $('map-city-search').value : '');
     let semCoordTotal = 0, semCoordCidades = 0, mapped = 0, mappedMrr = 0, mappedActive = 0;
     const bounds = [];
-    const addressRows = cityContext.filter(r => r.address);
+    const addressRows = cityContext.filter(r => r.address || r.bairro);
 
     const missingGroups = keys.filter(k => !CITY_COORDS[cityKey(byCity[k].c, byCity[k].uf)]).map(k => byCity[k]);
     if (missingGroups.length || !cityCoordsReady) {
@@ -1008,7 +1025,7 @@
       mapMarkersByCity[k] = marker;
     });
 
-   
+  
     geocodeMapAddresses(addressRows);
 
     $('map-stat-cities').textContent = num(keys.filter(k => CITY_COORDS[cityKey(byCity[k].c, byCity[k].uf)]).length);
@@ -1017,7 +1034,7 @@
     $('map-stat-active').textContent = pct(mappedActive, mapped);
     if (!missingGroups.length && cityCoordsReady) {
       $('mapa-sem-coord').textContent = addressRows.length
-        ? `${num(addressRows.length)} ${addressRows.length === 1 ? 'cliente possui' : 'clientes possuem'} endereço informado · localizando endereços...`
+        ? `${num(addressRows.length)} ${addressRows.length === 1 ? 'cliente possui' : 'clientes possuem'} endereço ou bairro/setor informado · localizando...`
         : (semCoordCidades
           ? `${num(semCoordTotal)} ${semCoordTotal === 1 ? 'cliente' : 'clientes'} em ${semCoordCidades} ${semCoordCidades === 1 ? 'cidade' : 'cidades'} sem coordenada conhecida`
           : `${num(mapped)} clientes georreferenciados`);
@@ -1082,7 +1099,7 @@
     }
   }
 
-  
+ 
   function getSearchedData() {
     const terms = norm($('table-search').value).split(/\s+/).filter(Boolean);
     const rows = terms.length ? filteredData.filter(r => terms.every(t => r._q.includes(t))) : filteredData.slice();
@@ -1145,11 +1162,11 @@
     updateSortHeaders();
   }
 
- 
+  
   function exportCSV() {
     const rows = getSearchedData();
     if (!rows.length) { notify('Não há clientes para exportar com os filtros atuais.', 'info'); return; }
-    // Aspas duplicadas e proteção contra fórmulas (=, +, -, @) ao abrir no Excel
+    
     const cell = v => { let t = String(v == null ? '' : v); if (/^[=+\-@]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; };
     const headers = ['ID', 'Cliente', 'Cidade', 'UF', 'Situação', 'Grupo', 'Ramo', 'Cliente desde', 'Mensalidade'];
     const lines = rows.map(r => [cell(r.id), cell(r.n), cell(r.cl), cell(r.uf), cell(r.sl), cell(r.g), cell(r.r), r.y || '', r.m.toFixed(2).replace('.', ',')].join(';'));
@@ -1162,7 +1179,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
- 
+  
   function setSource(name, n) {
     $('source-name').textContent = name;
     $('source-count').textContent = n ? `(${num(n)} registros)` : '';
@@ -1181,7 +1198,7 @@
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
         if (!json.length) throw new Error('A primeira aba da planilha está vazia.');
-        // Coluna B bruta de cada linha (posição, não nome): reserva para a Situação quando o cabeçalho não é reconhecido
+
         const raw2d = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
         const colBValues = json.map((_, i) => (raw2d[i + 1] ? raw2d[i + 1][1] : ''));
         const headers = Object.keys(json[0]).map(norm);
@@ -1212,7 +1229,7 @@
     reader.readAsArrayBuffer(file);
   }
 
-  
+
   function setupListeners() {
     setupMapControls();
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
@@ -1291,7 +1308,7 @@
     $('excel-file').addEventListener('change', handleFileUpload);
   }
 
-  
+
   document.addEventListener('DOMContentLoaded', () => {
     setupChartDefaults();
     dataset = processData(DATA_RAW);
@@ -1301,7 +1318,7 @@
     applyFilters();
     animate = false;
     if (!window.Chart) notify('Os gráficos não carregaram (biblioteca Chart.js indisponível). Verifique a conexão; o restante do painel segue funcionando.', 'error');
-
+    
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => renderCharts(readFilters()));
   });
 
