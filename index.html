@@ -7,24 +7,26 @@
 <title>Dashboard de Clientes</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563eb'/%3E%3Cpath d='M18 68 40 44 55 58 82 28' fill='none' stroke='white' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
-
+<!-- Fontes (agora aplicadas de fato: Bricolage nos títulos e números, Instrument Sans no resto) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-
+<!-- Tailwind CSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 
-
+<!-- Chart.js + DataLabels (versões fixas para o dashboard não quebrar numa atualização futura) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
-
+<!-- Leaflet (mapa de clientes) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<!-- SheetJS (leitura e modelo de Excel) -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+<!-- Ícones -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <link rel="stylesheet" href="css/style.css">
@@ -34,6 +36,7 @@
 
   <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">Ir para o conteúdo</a>
 
+  <!-- Cabeçalho -->
   <header class="bg-slate-900/85 backdrop-blur-md border-b border-slate-700/80 md:sticky md:top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
       <div class="flex items-center gap-3">
@@ -42,6 +45,7 @@
         </div>
         <div>
           <h1 class="font-display text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">Dashboard de Clientes</h1>
+        </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-2 md:justify-end">
@@ -67,7 +71,7 @@
 
     <div id="notice" role="status" aria-live="polite" class="hidden"></div>
 
-    
+    <!-- Filtros -->
     <section class="card p-4 sm:p-5 space-y-3" aria-labelledby="h-filtros">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 id="h-filtros" class="text-sm font-semibold text-slate-200 flex items-center gap-2">
@@ -125,7 +129,7 @@
       </div>
     </section>
 
-    
+    <!-- Indicadores (clicar em um deles filtra o status) -->
     <section class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4" aria-label="Indicadores">
       <button type="button" class="kpi" data-kpi="TODOS" style="--kc:#94a3b8">
         <span class="block text-xs font-medium text-slate-300">Total de clientes</span>
@@ -154,7 +158,7 @@
       </div>
     </section>
 
-   
+    <!-- Abas -->
     <div class="flex items-center gap-1 border-b border-slate-700/60" role="tablist" aria-label="Seções do dashboard">
       <button type="button" class="tab-btn" data-tab="geral" role="tab" aria-selected="true" aria-controls="panel-geral" id="tab-btn-geral">
         <i class="fa-solid fa-chart-simple" aria-hidden="true"></i> Visão geral
@@ -166,7 +170,7 @@
 
     <div id="panel-geral" role="tabpanel" aria-labelledby="tab-btn-geral" class="space-y-6">
 
-    
+    <!-- Mosaico + leituras -->
     <section class="space-y-6" aria-label="Mosaico e leituras">
       <div class="card p-5">
         <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -215,7 +219,7 @@
       </div>
     </section>
 
-
+    <!-- Gráficos -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6" aria-label="Gráficos">
       <div class="card p-5">
         <div class="mb-3">
@@ -264,7 +268,7 @@
       </div>
     </section>
 
-  
+    <!-- Tabela -->
     <section id="tabela" class="card p-5 space-y-4 scroll-mt-24" aria-labelledby="h-tabela">
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-700/60 pb-4">
         <div>
