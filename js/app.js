@@ -18,9 +18,7 @@
   const pct = (a, b, d = 1) => b > 0 ? ((a / b) * 100).toFixed(d).replace('.', ',') + '%' : '0%';
   const titleCase = s => String(s).toLowerCase().split(' ').map((w, i) => (i > 0 && SMALL_WORDS.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   const sentence = s => { s = String(s).toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); };
-  // Rótulo curto para eixos de gráfico: nomes de ramo compostos ("X / Y / Z") vêm da planilha
-  // e, por inteiro, estouram a largura que o Chart.js reserva no eixo — usa só o primeiro segmento
-  // e mostra o nome completo no tooltip.
+
   const shortLabel = s => {
     s = String(s || '');
     const slash = s.indexOf(' / ');
