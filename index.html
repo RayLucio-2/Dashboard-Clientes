@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Dashboard de Clientes</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232563eb'/%3E%3Cpath d='M18 68 40 44 55 58 82 28' fill='none' stroke='white' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+<!-- Fontes (agora aplicadas de fato: Bricolage nos títulos e números, Instrument Sans no resto) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Chart.js + DataLabels (versões fixas para o dashboard não quebrar numa atualização futura) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+<!-- Leaflet (mapa de clientes) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- SheetJS (leitura e modelo de Excel) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<!-- Ícones -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-slate-900 text-slate-100 min-h-screen antialiased flex flex-col selection:bg-blue-500 selection:text-white">
+
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">Ir para o conteúdo</a>
+
+  <!-- Cabeçalho -->
+  <header class="bg-slate-900/85 backdrop-blur-md border-b border-slate-700/80 md:sticky md:top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="grid place-items-center w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-400/30 text-blue-300">
+          <i class="fa-solid fa-chart-line text-lg" aria-hidden="true"></i>
+        </div>
+        <div>
+          <h1 class="font-display text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">Dashboard de Clientes</h1>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 md:justify-end">
+        <div id="data-source-badge" class="flex items-center gap-2 text-xs bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg text-slate-300 max-w-full">
+          <i class="fa-solid fa-database text-emerald-400" aria-hidden="true"></i>
+          <span id="source-name" class="truncate">Nenhuma base carregada</span>
+          <span id="source-count" class="text-slate-500 whitespace-nowrap"></span>
+        </div>
+        <button type="button" id="btn-download-template" class="btn" title="Baixar modelo vazio da planilha">
+          <i class="fa-solid fa-download" aria-hidden="true"></i>
+          <span>Baixar modelo</span>
+        </button>
+        <label id="upload-dropzone" class="btn btn-primary focus-within:ring-2 focus-within:ring-blue-300">
+          <i class="fa-solid fa-file-excel" aria-hidden="true"></i>
+          <span>Carregar planilha</span>
+          <input type="file" id="excel-file" accept=".xlsx,.xls" class="sr-only">
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
+
+    <div id="notice" role="status" aria-live="polite" class="hidden"></div>
+
+    <!-- Filtros -->
+    <section class="card p-4 sm:p-5 space-y-3" aria-labelledby="h-filtros">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="h-filtros" class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-filter text-blue-400" aria-hidden="true"></i> Filtros
+        </h2>
+        <div class="flex items-center gap-4">
+          <span id="filter-summary" class="text-xs text-slate-400" aria-live="polite"></span>
+          <button type="button" id="btn-reset-filters" class="text-xs text-slate-300 hover:text-blue-300 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Redefinir filtros
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="relative" id="cidade-wrap">
+          <label for="btn-cidade" class="lbl">Cidade</label>
+          <button type="button" id="btn-cidade" class="fld flex items-center justify-between gap-2 text-left" aria-haspopup="listbox" aria-expanded="false">
+            <span id="cidade-label" class="truncate">Goiânia</span>
+            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 shrink-0" aria-hidden="true"></i>
+          </button>
+          <div id="cidade-panel" class="hidden absolute z-30 mt-1.5 w-72 max-w-[85vw] card p-2.5 shadow-2xl" role="listbox" aria-multiselectable="true" aria-label="Selecionar cidades">
+            <div class="relative mb-2">
+              <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-[11px]" aria-hidden="true"></i>
+              <label for="cidade-search" class="sr-only">Buscar cidade</label>
+              <input type="search" id="cidade-search" placeholder="Buscar cidade..." class="fld !py-1.5 !pl-7 text-xs">
+            </div>
+            <div class="flex items-center justify-between px-0.5 pb-1.5 mb-1 border-b border-slate-700/60 text-[11px]">
+              <button type="button" id="cidade-marcar-visiveis" class="text-blue-300 hover:text-blue-200">Marcar visíveis</button>
+              <button type="button" id="cidade-limpar" class="text-slate-400 hover:text-slate-200">Limpar seleção</button>
+            </div>
+            <div id="cidade-list" class="max-h-56 overflow-y-auto space-y-0.5"></div>
+          </div>
+        </div>
+        <div>
+          <label for="filter-status" class="lbl">Status geral</label>
+          <select id="filter-status" class="fld">
+            <option value="TODOS" selected>Todos</option>
+            <option value="ATIVO">Ativos</option>
+            <option value="PENDENCIA">Pendências</option>
+            <option value="INATIVO">Inativos</option>
+          </select>
+        </div>
+        <div>
+          <label for="filter-situacao" class="lbl">Situação cadastral</label>
+          <select id="filter-situacao" class="fld"></select>
+        </div>
+        <div>
+          <label for="filter-ramo" class="lbl">Ramo de atuação</label>
+          <select id="filter-ramo" class="fld"></select>
+        </div>
+        <div class="col-span-2 lg:col-span-1">
+          <label for="filter-grupo" class="lbl">Grupo do sistema</label>
+          <select id="filter-grupo" class="fld"></select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Indicadores (clicar em um deles filtra o status) -->
+    <section class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4" aria-label="Indicadores">
+      <button type="button" class="kpi" data-kpi="TODOS" style="--kc:#94a3b8">
+        <span class="block text-xs font-medium text-slate-300">Total de clientes</span>
+        <span class="block font-display text-3xl font-bold text-white mt-1" id="kpi-total">0</span>
+        <span class="block text-xs text-slate-400 mt-1"><i class="fa-solid fa-location-dot text-blue-400 mr-1" aria-hidden="true"></i><span id="kpi-cidade-label">Goiânia</span></span>
+      </button>
+      <button type="button" class="kpi" data-kpi="ATIVO" style="--kc:#10b981">
+        <span class="block text-xs font-medium text-slate-300">Ativos</span>
+        <span class="block font-display text-3xl font-bold text-emerald-400 mt-1" id="kpi-ativos">0</span>
+        <span class="block text-xs text-slate-400 mt-1" id="kpi-pct-ativos">0% do recorte</span>
+      </button>
+      <button type="button" class="kpi" data-kpi="PENDENCIA" style="--kc:#f59e0b">
+        <span class="block text-xs font-medium text-slate-300">Pendências</span>
+        <span class="block font-display text-3xl font-bold text-amber-400 mt-1" id="kpi-pendencias">0</span>
+        <span class="block text-xs text-slate-400 mt-1" id="kpi-risco">Falta assinar ou sem pagar</span>
+      </button>
+      <button type="button" class="kpi" data-kpi="INATIVO" style="--kc:#f43f5e">
+        <span class="block text-xs font-medium text-slate-300">Inativos</span>
+        <span class="block font-display text-3xl font-bold text-rose-400 mt-1" id="kpi-inativos">0</span>
+        <span class="block text-xs text-slate-400 mt-1" id="kpi-pct-inativos">0% do recorte</span>
+      </button>
+      <div class="kpi col-span-2 lg:col-span-1" style="--kc:#3b82f6">
+        <span class="block text-xs font-medium text-slate-300">MRR (clientes ativos)</span>
+        <span class="block font-display text-2xl font-bold text-blue-300 mt-1.5" id="kpi-mrr">R$ 0,00</span>
+        <span class="block text-xs text-slate-400 mt-1">Ticket médio dos pagantes: <span id="kpi-ticket" class="text-slate-200 font-semibold">R$ 0,00</span></span>
+      </div>
+    </section>
+
+    <!-- Abas -->
+    <div class="flex items-center gap-1 border-b border-slate-700/60" role="tablist" aria-label="Seções do dashboard">
+      <button type="button" class="tab-btn" data-tab="geral" role="tab" aria-selected="true" aria-controls="panel-geral" id="tab-btn-geral">
+        <i class="fa-solid fa-chart-simple" aria-hidden="true"></i> Visão geral
+      </button>
+      <button type="button" class="tab-btn" data-tab="mapa" role="tab" aria-selected="false" aria-controls="panel-mapa" id="tab-btn-mapa" tabindex="-1">
+        <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i> Mapa
+      </button>
+    </div>
+
+    <div id="panel-geral" role="tabpanel" aria-labelledby="tab-btn-geral" class="space-y-6">
+
+    <!-- Mosaico + leituras -->
+    <section class="space-y-6" aria-label="Mosaico e leituras">
+      <div class="card p-5">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 class="font-display text-lg font-semibold text-white">Mosaico de clientes</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Cada quadrado é um cadastro. Clique em um para achá-lo na lista.</p>
+          </div>
+          <div class="seg" role="group" aria-label="Ordenação do mosaico">
+            <button type="button" data-msort="cadastro" aria-pressed="true">Ordem da base</button>
+            <button type="button" data-msort="status" aria-pressed="false">Agrupar por status</button>
+          </div>
+        </div>
+        <div id="mosaico-container" class="bg-slate-900/70 p-4 rounded-xl border border-slate-700/50 min-h-[96px]"></div>
+        <div class="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-700/60" role="group" aria-label="Destacar no mosaico">
+          <button type="button" class="lg" data-tone="act" aria-pressed="false"><i class="sw f-act"></i> Ativo <span id="lg-act" class="text-slate-500"></span></button>
+          <button type="button" class="lg" data-tone="pend" aria-pressed="false"><i class="sw f-pend"></i> Pendência <span id="lg-pend" class="text-slate-500"></span></button>
+          <button type="button" class="lg" data-tone="exit" aria-pressed="false"><i class="sw f-exit"></i> Saiu recente <span id="lg-exit" class="text-slate-500"></span></button>
+          <button type="button" class="lg" data-tone="old" aria-pressed="false"><i class="sw f-old"></i> Saiu há mais tempo <span id="lg-old" class="text-slate-500"></span></button>
+        </div>
+      </div>
+
+      <div class="card p-5">
+        <h2 class="font-display text-lg font-semibold text-white mb-4">O que chama atenção</h2>
+        <ul id="readout-list" class="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 text-[13px] text-slate-300"></ul>
+      </div>
+
+      <div class="card p-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 class="font-display text-lg font-semibold text-white">Receita de clientes que saíram ou estão devendo</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Mensalidade de quem está com pendência (falta assinar ou sem pagar) e de quem já saiu, dentro do recorte atual.</p>
+          </div>
+          <div class="flex flex-col sm:flex-row items-stretch gap-3 shrink-0 w-full sm:w-auto">
+            <div class="kpi sm:w-56" style="--kc:#f59e0b">
+              <span class="block text-xs font-medium text-slate-300">Em atraso</span>
+              <span class="block font-display text-2xl font-bold text-amber-400 mt-1.5" id="risco-pend-valor">R$ 0,00</span>
+              <span class="block text-xs text-slate-400 mt-1">Clientes pendentes: <span id="risco-pend-count" class="text-slate-200 font-semibold">0</span></span>
+            </div>
+            <div class="kpi sm:w-56" style="--kc:#f43f5e">
+              <span class="block text-xs font-medium text-slate-300">Perdida (saíram)</span>
+              <span class="block font-display text-2xl font-bold text-rose-400 mt-1.5" id="risco-saida-valor">R$ 0,00</span>
+              <span class="block text-xs text-slate-400 mt-1">Clientes que saíram: <span id="risco-saida-count" class="text-slate-200 font-semibold">0</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gráficos -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6" aria-label="Gráficos">
+      <div class="card p-5">
+        <div class="mb-3">
+          <h3 class="font-display text-base font-semibold text-white">Status dos clientes</h3>
+          <p class="text-xs text-slate-400">Clique em uma fatia para filtrar.</p>
+        </div>
+        <div class="relative h-64"><canvas id="chart-status" role="img" aria-label="Gráfico de rosca com a proporção de clientes ativos, com pendência e inativos"></canvas></div>
+      </div>
+
+      <div class="card p-5">
+        <div class="mb-3">
+          <h3 class="font-display text-base font-semibold text-white">Clientes por cidade</h3>
+          <p class="text-xs text-slate-400">Compara as cidades sem aplicar o filtro de cidade. Clique em uma barra para filtrar.</p>
+        </div>
+        <div class="relative h-64"><canvas id="chart-cidades" role="img" aria-label="Gráfico de barras com clientes por cidade, separados por status"></canvas></div>
+      </div>
+
+      <div class="card p-5">
+        <div class="mb-3">
+          <h3 class="font-display text-base font-semibold text-white">Situação cadastral</h3>
+          <p class="text-xs text-slate-400">A cor segue o status: verde ativo, âmbar pendência, rosa saída.</p>
+        </div>
+        <div class="relative h-64"><canvas id="chart-situacao" role="img" aria-label="Gráfico de barras com a quantidade de clientes por situação cadastral"></canvas></div>
+      </div>
+
+      <div class="card p-5">
+        <div class="flex flex-wrap items-start justify-between gap-2 mb-3">
+          <div>
+            <h3 class="font-display text-base font-semibold text-white">Principais ramos (clientes ativos)</h3>
+            <p class="text-xs text-slate-400">Compare por quantidade ou por receita.</p>
+          </div>
+          <div class="seg" role="group" aria-label="Métrica dos ramos">
+            <button type="button" data-metric="qtd" aria-pressed="true">Clientes</button>
+            <button type="button" data-metric="mrr" aria-pressed="false">Receita</button>
+          </div>
+        </div>
+        <div class="relative h-64"><canvas id="chart-ramos" role="img" aria-label="Gráfico de barras com os principais ramos de atuação dos clientes ativos"></canvas></div>
+      </div>
+
+      <div class="card p-5 lg:col-span-2">
+        <div class="mb-3">
+          <h3 class="font-display text-base font-semibold text-white">Entradas, saídas e base acumulada por ano</h3>
+          <p class="text-xs text-slate-400">Usa o ano de cadastro e o ano de saída de cada cliente do recorte.</p>
+        </div>
+        <div class="relative h-72"><canvas id="chart-evolucao" role="img" aria-label="Gráfico com novos clientes, saídas e base acumulada por ano"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Tabela -->
+    <section id="tabela" class="card p-5 space-y-4 scroll-mt-24" aria-labelledby="h-tabela">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-700/60 pb-4">
+        <div>
+          <h2 id="h-tabela" class="font-display text-lg font-semibold text-white">Lista de clientes</h2>
+          <p class="text-xs text-slate-400">Clique no título de uma coluna para ordenar. A busca olha todas as colunas.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <div class="relative flex-1 sm:w-72">
+            <label for="table-search" class="sr-only">Buscar na lista</label>
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" aria-hidden="true"></i>
+            <input type="search" id="table-search" placeholder="Buscar por nome, cidade, ramo, ID..." class="fld fld-icon">
+          </div>
+          <button type="button" id="btn-export-csv" class="btn">
+            <i class="fa-solid fa-download text-emerald-400" aria-hidden="true"></i> Baixar CSV
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto rounded-xl border border-slate-700/60">
+        <table class="w-full text-left text-[13px] text-slate-300">
+          <thead class="bg-slate-900/70 text-slate-400 text-xs border-b border-slate-700/80">
+            <tr>
+              <th scope="col" class="p-3" data-th="id"><button type="button" data-sort="id">ID <i class="fa-solid fa-sort text-[10px] opacity-60" aria-hidden="true"></i></button></th>
+              <th scope="col" class="p-3" data-th="n"><button type="button" data-sort="n">Cliente <i class="fa-solid fa-sort text-[10px] opacity-60" aria-hidden="true"></i></button></th>
+              <th scope="col" class="p-3" data-th="cl"><button type="button" data-sort="cl">Cidade <i class="fa-solid fa-sort text-[10px] opacity-60" aria-hidden="true"></i></button></th>
+              <th scope="col" class="p-3" data-th="sl"><button type="button" data-sort="sl">Situação <i class="fa-solid fa-sort text-[10px] opacity-60" aria-hidden="true"></i></button></th>
+              <th scope="col" class="p-3" data-th="g"><button type="button" data-sort="g">Grupo <i class="fa-solid fa-sort text-[10px] opacity-60" aria-hidden="true"></i></button></th>
+              <th scope="col" class="p-3" data-th="r"><button type="button" data-sort="r">Ramo <i class="fa-solid fa-sort text-[10px] opacity-60" aria-hidden="true"></i></button></th>
+              <th scope="col" class="p-3" data-th="y"><button type="button" data-sort="y">Desde <i class="fa-solid fa-sort text-[10px] opacity-60" aria-hidden="true"></i></button></th>
+              <th scope="col" class="p-3 text-right" data-th="m"><button type="button" data-sort="m">Mensalidade <i class="fa-solid fa-sort text-[10px] opacity-60" aria-hidden="true"></i></button></th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-slate-700/60"></tbody>
+          <tfoot>
+            <tr class="border-t border-slate-700/80 bg-slate-900/60">
+              <td colspan="7" class="p-3 text-right font-semibold text-slate-300">Total da mensalidade (clientes filtrados)</td>
+              <td id="table-total-mensalidade" class="p-3 text-right font-mono font-semibold text-white">R$ 0,00</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-400 pt-1">
+        <div id="table-info" aria-live="polite">Nenhum cliente</div>
+        <div class="flex items-center gap-3">
+          <label for="page-size" class="flex items-center gap-2">Linhas
+            <select id="page-size" class="fld !w-auto !py-1">
+              <option value="12" selected>12</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+          <div class="flex items-center gap-2">
+            <button type="button" id="btn-prev-page" class="btn !py-1">Anterior</button>
+            <span id="page-indicator" class="px-1 text-slate-300 font-medium whitespace-nowrap">Página 1</span>
+            <button type="button" id="btn-next-page" class="btn !py-1">Próxima</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    </div>
+
+    <div id="panel-mapa" role="tabpanel" aria-labelledby="tab-btn-mapa" class="hidden">
+      <section class="card p-5 space-y-4" aria-labelledby="h-mapa">
+        <div class="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="grid place-items-center w-8 h-8 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-400/20"><i class="fa-solid fa-map-location-dot"></i></span>
+              <div>
+                <h2 id="h-mapa" class="font-display text-lg font-semibold text-white">Distribuição geográfica</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Mapa interativo por município, com visualização de ruas, satélite e relevo. Clique nos marcadores para explorar cada cidade.</p>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <div class="relative w-56">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+              <label for="map-city-search" class="sr-only">Buscar cidade no mapa</label>
+              <input id="map-city-search" class="fld !pl-8 !py-2" type="search" placeholder="Buscar cidade...">
+            </div>
+            <button type="button" id="map-fit" class="btn"><i class="fa-solid fa-expand"></i> Enquadrar</button>
+            <button type="button" id="map-center-go" class="btn"><i class="fa-solid fa-location-crosshairs"></i> Brasil</button>
+            <button type="button" id="map-clear-city" class="btn"><i class="fa-solid fa-earth-americas"></i> Todas as cidades</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div class="map-stat"><span class="lbl">Municípios com clientes</span><div id="map-stat-cities" class="map-stat-value">0</div></div>
+          <div class="map-stat"><span class="lbl">Clientes no mapa</span><div id="map-stat-clients" class="map-stat-value">0</div></div>
+          <div class="map-stat"><span class="lbl">MRR ativo</span><div id="map-stat-mrr" class="map-stat-value text-blue-300">R$ 0,00</div></div>
+          <div class="map-stat"><span class="lbl">% ativos</span><div id="map-stat-active" class="map-stat-value text-emerald-400">0%</div></div>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4">
+          <div class="relative">
+            <div class="map-toolbar absolute z-[500] top-3 left-3 rounded-xl p-2.5 flex flex-wrap items-center gap-2 text-xs">
+              <span class="text-slate-400 font-semibold">Tamanho:</span>
+              <div class="seg" role="group" aria-label="Métrica do tamanho dos círculos">
+                <button type="button" id="map-metric-clients" aria-pressed="true">Clientes</button>
+                <button type="button" id="map-metric-mrr" aria-pressed="false">MRR</button>
+              </div>
+            </div>
+            <div id="map" class="rounded-xl border border-slate-700/60" style="height:560px; background:#0f172a;"></div>
+          </div>
+
+          <aside class="rounded-xl border border-slate-700/60 bg-slate-900/45 p-3 min-h-[560px]" aria-label="Ranking de cidades">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div>
+                <h3 class="font-display text-sm font-semibold text-white">Cidades em destaque</h3>
+                <p class="text-[11px] text-slate-500">Ordenadas pelo indicador selecionado</p>
+              </div>
+              <span id="map-ranking-count" class="text-[11px] text-slate-500"></span>
+            </div>
+            <div id="map-ranking" class="space-y-1 max-h-[490px] overflow-y-auto pr-1"></div>
+          </aside>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-1 border-t border-slate-700/60">
+          <span class="font-semibold text-slate-400">Status predominante:</span>
+          <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></i> Ativos</span>
+          <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-amber-500 inline-block"></i> Pendências</span>
+          <span class="flex items-center gap-1.5"><i class="w-3 h-3 rounded-full bg-rose-500 inline-block"></i> Inativos</span>
+          <span id="mapa-sem-coord" class="text-slate-500 ml-auto"></span>
+        </div>
+      </section>
+    </div>
+
+  </main>
+
+  <footer class="bg-slate-900 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+    <strong>Desenvolvendo por Rayane Borba</strong>
+  </footer>
+
+  <div id="tip" role="tooltip" hidden></div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
