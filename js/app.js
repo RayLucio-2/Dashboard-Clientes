@@ -45,7 +45,7 @@
   const cityDisplay = (cl, uf) => uf ? `${cl} (${uf})` : cl;
   const cityLabelFromKey = key => { const g = cityGroupsByKey[key]; return g ? cityDisplay(g.cl, g.uf) : key; };
 
-  const DATA_RAW = [];;
+  const DATA_RAW = [];
 
   const ALIASES = {
     id: ['id', 'cliid', 'codigo', 'cod', 'cod cliente', 'codigo cliente'],
@@ -171,7 +171,7 @@
       cityCoordsLoading = false;
     }
   }
-  const view = { page: 1, pageSize: 12, sortKey: 'id', sortDir: 1, mosaicSort: 'cadastro', ramoMetric: 'qtd', tone: null, cities: new Set() };
+  const view = { page: 1, pageSize: 12, sortKey: 'id', sortDir: 1, mosaicSort: 'id', ramoMetric: 'qtd', tone: null, cities: new Set() };
   let citiesReady = false;
   let cityGroups = [];
   const cityGroupsByKey = {};
@@ -363,6 +363,8 @@
       return;
     }
     mosaicRows = filteredData.slice();
+    if (view.mosaicSort === 'id') mosaicRows.sort((a, b) =>
+      String(a.id).localeCompare(String(b.id), 'pt-BR', { numeric: true }) || a.k - b.k);
     if (view.mosaicSort === 'status') mosaicRows.sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone] || a.k - b.k);
     if (view.mosaicSort === 'saida') mosaicRows.sort((a, b) => (b.x || 0) - (a.x || 0) || a.k - b.k);
 
@@ -387,8 +389,8 @@
     if (!r) return;
     const isInactive = !r.isAtivo && !r.isPend;
     const statusLine = (isInactive && r.x)
-      ? (r.y ? `Cliente desde ${r.y}, saiu em ${r.x}` : `Saiu em ${r.x}`)
-      : `${esc(r.sl)}${r.y ? ', cliente desde ' + r.y : ''}`;
+      ? `Saiu em ${r.x}`
+      : esc(r.sl);
     tip.innerHTML = `<strong>${esc(r.n)}</strong> <span class="text-slate-400">${esc(cityDisplay(r.cl, r.uf))}</span><br>${statusLine}<br>Mensalidade: <b>${brl(r.m)}</b>`;
     tip.hidden = false;
     const w = tip.offsetWidth, h = tip.offsetHeight;
@@ -1170,7 +1172,7 @@
         if (!ALIASES.n.some(a => headers.includes(a))) throw new Error('Não encontrei a coluna "Cliente". Confira se a primeira linha da planilha tem os nomes das colunas.');
         const hasStatusHeader = ALIASES.s.some(a => headers.includes(a));
         const hasStatusColB = colBValues.some(v => denull(v) !== '');
-        if (!hasStatusHeader && !hasStatusColB) throw new Error('Não encontrei a coluna "Situação" nem dados na coluna B. A situação de cada cliente (ATIVO, FALTA ASSINAR, SEM PAGAR, SEM PAGAR, SAIU AAAA...) precisa estar numa coluna chamada "Situação" ou na coluna B da planilha.');
+        if (!hasStatusHeader && !hasStatusColB) throw new Error('Não encontrei a coluna "Situação" nem dados na coluna B. A situação de cada cliente (ATIVO, FALTA ASSINAR, SEM PAGAR, SAIU AAAA...) precisa estar numa coluna chamada "Situação" ou na coluna B da planilha.');
         const rows = processData(json, colBValues);
         if (!rows.length) throw new Error('Nenhuma linha com dados foi encontrada.');
 
@@ -1223,11 +1225,14 @@
       else toggleFilter('filter-status', b.dataset.kpi);
     }));
 
-    document.querySelectorAll('[data-msort]').forEach(b => b.addEventListener('click', () => {
-      view.mosaicSort = b.dataset.msort;
-      document.querySelectorAll('[data-msort]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-      renderMosaico();
-    }));
+    document.querySelectorAll('[data-msort]').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.msort === view.mosaicSort));
+      b.addEventListener('click', () => {
+        view.mosaicSort = b.dataset.msort;
+        document.querySelectorAll('[data-msort]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        renderMosaico();
+      });
+    });
     document.querySelectorAll('[data-metric]').forEach(b => b.addEventListener('click', () => {
       view.ramoMetric = b.dataset.metric;
       document.querySelectorAll('[data-metric]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
