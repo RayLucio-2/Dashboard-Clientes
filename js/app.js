@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  /* ---------- Constantes e utilitários ---------- */
+
   const $ = id => document.getElementById(id);
   const PEND_SITS = ['FALTA ASSINAR', 'SEM PAGAR'];
   const STATUS_KEYS = ['ATIVO', 'PENDENCIA', 'INATIVO'];
@@ -9,8 +9,6 @@
   const TONE_ORDER = { act: 0, pend: 1, exit: 2, old: 3 };
   const SMALL_WORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
 
-  // Coordenadas de municípios: deixadas vazias para não manter dados geográficos fixos no código.
-  // As coordenadas dos municípios são carregadas de uma base pública; nenhum cliente é embutido no código.
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   const brl = (v, d = 2) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: d, maximumFractionDigits: d });
@@ -28,7 +26,6 @@
   };
   const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-  // Nome do estado -> sigla (aceita a planilha vir com "Goiás" ou já com "GO")
   const UF_BY_NAME = {
     'acre': 'AC', 'alagoas': 'AL', 'amapa': 'AP', 'amazonas': 'AM', 'bahia': 'BA', 'ceara': 'CE',
     'distrito federal': 'DF', 'espirito santo': 'ES', 'goias': 'GO', 'maranhao': 'MA',
@@ -52,11 +49,8 @@
   const cityDisplay = (cl, uf) => uf ? `${cl} (${uf})` : cl;
   const cityLabelFromKey = key => { const g = cityGroupsByKey[key]; return g ? cityDisplay(g.cl, g.uf) : key; };
 
-  /* ---------- Base de dados ---------- */
-  // Base inicial vazia. Os dados entram somente pela planilha carregada pelo usuário.
   const DATA_RAW = [];;
 
-  // Nomes de coluna aceitos ao carregar uma planilha (sem acento e em minúsculas)
   const ALIASES = {
     id: ['id', 'cliid', 'codigo', 'cod', 'cod cliente', 'codigo cliente'],
     n:  ['n', 'nome', 'cliente', 'nome do cliente', 'razao social', 'nome fantasia'],
@@ -71,7 +65,6 @@
     a:  ['a', 'endereco', 'endereço', 'endereco completo', 'logradouro', 'address']
   };
 
-  // Texto "Null"/"NaN" vindo de exportações de CRM não é um valor de verdade
   const NULLISH = /^(null|nan|none|undefined)$/i;
   const denull = v => { const s = String(v == null ? '' : v).trim(); return NULLISH.test(s) ? '' : s; };
 
@@ -79,14 +72,13 @@
     const map = {};
     Object.keys(row).forEach(k => { map[norm(k)] = row[k]; });
     const get = f => { for (const a of ALIASES[f]) { if (map[a] !== undefined && map[a] !== '') return map[a]; } return ''; };
-    // Regra fixa: se a planilha não tiver uma coluna de Situação reconhecível pelo nome,
-    // a coluna B é sempre usada para decidir quem está ativo.
+    
     let s = get('s');
     if (s === '' && colB !== undefined && denull(colB) !== '') s = colB;
     return { id: get('id'), n: get('n'), c: get('c'), uf: get('uf'), s, r: get('r'), g: get('g'), m: get('m'), y: get('y'), x: get('x'), a: get('a') };
   }
 
-  // Aceita 1234.5, "1.234,56", "R$ 1.234,56"
+  
   function parseMoney(v) {
     if (typeof v === 'number') return isFinite(v) ? v : 0;
     let s = String(v == null ? '' : v).replace(/[^\d,.\-]/g, '');
@@ -99,17 +91,14 @@
     return isFinite(n) ? n : 0;
   }
 
-  // Aceita 2019, "2019", "12/03/2019" ou data do Excel
+ 
   function parseYear(v) {
     if (v instanceof Date) return isNaN(v) ? 0 : v.getFullYear();
     const m = String(v == null ? '' : v).match(/(?:19|20)\d{2}/);
     return m ? +m[0] : 0;
   }
 
-  // Regra de negócio: ATIVO / PENDÊNCIA (falta assinar, sem pagar) / INATIVO (todo o resto)
-  // colBValues (opcional): valor bruto da coluna B de cada linha, usado como reserva
-  // para decidir quem está ativo quando a planilha não tem um cabeçalho de Situação reconhecível.
-  function processData(items, colBValues) {
+    function processData(items, colBValues) {
     const base = items.map((row, idx) => pick(row, colBValues ? colBValues[idx] : undefined))
       .filter(r => r.n !== '' || r.s !== '' || r.c !== '')
       .map((r, i) => {
@@ -146,7 +135,6 @@
     });
   }
 
-  /* ---------- Estado ---------- */
   let dataset = [];
   let filteredData = [];
   let cityContext = [];   // recorte sem o filtro de cidade (para comparar cidades)
@@ -193,7 +181,6 @@
   let cityGroups = [];           // [{key, c, cl, uf}] — um por combinação cidade+UF na base
   const cityGroupsByKey = {};    // key -> {c, cl, uf}
 
-  /* ---------- Avisos ---------- */
   let noticeTimer;
   function hideNotice() { const el = $('notice'); el.className = 'hidden'; el.innerHTML = ''; }
   function notify(msg, type) {
@@ -210,8 +197,7 @@
     if (type !== 'error') noticeTimer = setTimeout(hideNotice, 7000);
   }
 
-  /* ---------- Filtros ---------- */
-  function fillSelect(id, allValue, allLabel, values, labelFn) {
+   function fillSelect(id, allValue, allLabel, values, labelFn) {
     const sel = $(id), prev = sel.value;
     sel.innerHTML = '';
     sel.add(new Option(allLabel, allValue));
@@ -244,7 +230,7 @@
     fillSelect('filter-grupo', 'TODOS', 'Todos os grupos', uniq('g'));
   }
 
-  // Painel de seleção múltipla de cidades
+
   function cidadeCounts() {
     const f = readFilters();
     const counts = {};
@@ -305,7 +291,7 @@
       && (f.grupo === 'TODOS' || r.g === f.grupo);
   }
 
-  // Clicar de novo no mesmo valor desfaz o filtro
+   
   function toggleFilter(id, value) {
     const sel = $(id);
     if (![].some.call(sel.options, o => o.value === value)) return;
@@ -314,8 +300,7 @@
     applyFilters();
   }
 
-  // Clique num gráfico restringe a apenas 1 cidade (chave cidade+UF); clicar de novo na mesma desfaz
-  function toggleCity(key) {
+   function toggleCity(key) {
     view.cities = (view.cities.size === 1 && view.cities.has(key)) ? new Set() : new Set([key]);
     view.page = 1;
     applyFilters();
@@ -356,7 +341,7 @@
     if (map) renderMap(f); // só atualiza o mapa se a aba já foi aberta ao menos uma vez
   }
 
-  /* ---------- Indicadores ---------- */
+  
   function renderKPIs(f) {
     const s = stats;
     $('kpi-total').textContent = num(s.total);
@@ -374,7 +359,7 @@
     });
   }
 
-  /* ---------- Mosaico ---------- */
+ 
   function renderMosaico() {
     const box = $('mosaico-container');
     const counts = { act: 0, pend: 0, exit: 0, old: 0 };
@@ -467,7 +452,7 @@
     ul.innerHTML = items.map(([t, h]) => `<li class="ins ins-${t}">${h}</li>`).join('');
   }
 
-  /* ---------- Receita de clientes com pendência ou que saíram ---------- */
+  
   function renderRiscoReceita() {
     const pendRows = filteredData.filter(r => r.isPend);
     const exitRows = filteredData.filter(r => !r.isAtivo && !r.isPend);
@@ -479,7 +464,7 @@
     $('risco-saida-count').textContent = num(exitRows.length);
   }
 
-  /* ---------- Gráficos ---------- */
+ 
   const centerText = {
     id: 'centerText',
     afterDatasetsDraw(chart) {
@@ -541,7 +526,6 @@
     if (!window.Chart) return;
     const s = stats;
 
-    // 1) Status (rosca). Clique filtra o status.
     makeChart('chart-status', {
       type: 'doughnut',
       plugins: [centerText],
@@ -564,7 +548,7 @@
       })
     });
 
-    // 2) Cidades (ignora o filtro de cidade; destaca a cidade escolhida)
+   
     const cMap = {};
     cityContext.forEach(r => {
       const k = gkey(r.c, r.uf);
@@ -596,7 +580,7 @@
       })
     });
 
-    // 3) Situação cadastral (cor segue o status)
+   
     const sMap = {}, sTone = {};
     filteredData.forEach(r => { sMap[r.s] = (sMap[r.s] || 0) + 1; sTone[r.s] = r.statusGeral; });
     const topS = Object.keys(sMap).sort((a, b) => sMap[b] - sMap[a]).slice(0, 8);
@@ -618,7 +602,7 @@
       })
     });
 
-    // 4) Ramos (clientes ou receita)
+  
     const rMap = {};
     filteredData.filter(r => r.isAtivo).forEach(r => { const o = rMap[r.r] || (rMap[r.r] = { q: 0, m: 0 }); o.q++; o.m += r.m; });
     const key = view.ramoMetric === 'mrr' ? 'm' : 'q';
@@ -645,7 +629,7 @@
       })
     });
 
-    // 5) Evolução por ano: entradas, saídas e base acumulada
+  
     const inMap = {}, outMap = {};
     let minY = 0, maxY = 0;
     filteredData.forEach(r => {
@@ -681,11 +665,11 @@
     });
   }
 
-  /* ---------- Mapa ---------- */
+  
   let mapMetric = 'clients';
   let mapMarkersByCity = {};
 
-  // Endereços e coordenadas são obtidos somente da planilha carregada pelo usuário.
+  
 
   let mapBaseLayer = null;
   let mapSatelliteLayer = null;
@@ -728,13 +712,13 @@
       attributionControl: true
     }).setView([-14.2, -51.9], 4.3);
 
-    /* Base clara: mais próxima da leitura visual de um mapa comercial moderno. */
+   
     mapBaseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19
     }).addTo(map);
 
-    /* Alternativas visuais gratuitas para leitura territorial. */
+    
     mapSatelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri',
       maxZoom: 19
@@ -839,8 +823,7 @@
     const run = ++mapGeocodeRun;
     if (!rows.length || !map) return;
 
-    // Um mesmo endereço pode pertencer a mais de um cliente. Geocodificamos
-    // uma vez por endereço, mas criamos um pino para CADA cliente.
+    
     const groups = new Map();
     rows.forEach(r => {
       const rawAddress = String(r.address || '').trim();
@@ -883,7 +866,7 @@
             }
           }
         } catch (_) {}
-        // Respeita o limite público do Nominatim: uma consulta por segundo.
+      
         await new Promise(resolve => setTimeout(resolve, 1050));
       }
 
@@ -1025,8 +1008,7 @@
       mapMarkersByCity[k] = marker;
     });
 
-    // Além dos pontos por município, tenta localizar individualmente os endereços
-    // que existem na planilha, em qualquer estado.
+   
     geocodeMapAddresses(addressRows);
 
     $('map-stat-cities').textContent = num(keys.filter(k => CITY_COORDS[cityKey(byCity[k].c, byCity[k].uf)]).length);
@@ -1100,7 +1082,7 @@
     }
   }
 
-  /* ---------- Tabela ---------- */
+  
   function getSearchedData() {
     const terms = norm($('table-search').value).split(/\s+/).filter(Boolean);
     const rows = terms.length ? filteredData.filter(r => terms.every(t => r._q.includes(t))) : filteredData.slice();
@@ -1163,7 +1145,7 @@
     updateSortHeaders();
   }
 
-  /* ---------- Exportar CSV ---------- */
+ 
   function exportCSV() {
     const rows = getSearchedData();
     if (!rows.length) { notify('Não há clientes para exportar com os filtros atuais.', 'info'); return; }
@@ -1180,7 +1162,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /* ---------- Planilha: carregar e baixar modelo ---------- */
+ 
   function setSource(name, n) {
     $('source-name').textContent = name;
     $('source-count').textContent = n ? `(${num(n)} registros)` : '';
@@ -1230,7 +1212,7 @@
     reader.readAsArrayBuffer(file);
   }
 
-  /* ---------- Eventos ---------- */
+  
   function setupListeners() {
     setupMapControls();
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
@@ -1309,7 +1291,7 @@
     $('excel-file').addEventListener('change', handleFileUpload);
   }
 
-  /* ---------- Início ---------- */
+  
   document.addEventListener('DOMContentLoaded', () => {
     setupChartDefaults();
     dataset = processData(DATA_RAW);
@@ -1319,14 +1301,13 @@
     applyFilters();
     animate = false;
     if (!window.Chart) notify('Os gráficos não carregaram (biblioteca Chart.js indisponível). Verifique a conexão; o restante do painel segue funcionando.', 'error');
-    // Redesenha os gráficos quando as fontes terminarem de carregar, para o texto do canvas sair na fonte certa
+
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => renderCharts(readFilters()));
   });
 
 })();
 
-// Modelo de planilha embutido no próprio arquivo para permitir o download
-// sem depender de servidor ou arquivo externo.
+
 const CLIENT_TEMPLATE_XLSX_BASE64 = "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";
 
 function downloadClientTemplate() {

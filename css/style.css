@@ -14,7 +14,7 @@ body { font-family: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 
 ::-webkit-scrollbar-track { background: #0f172a; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
-/* Componentes */
+
 .card { background: rgba(30,41,59,.72); border: 1px solid rgba(51,65,85,.85); border-radius: 1rem; }
 .lbl { display: block; font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: .25rem; }
 .fld { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: .5rem; padding: .5rem .625rem; font-size: 13px; color: #f1f5f9; }
@@ -30,17 +30,17 @@ body { font-family: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 
 .seg button:hover { color: #e2e8f0; }
 .seg button[aria-pressed="true"] { background: #334155; color: #fff; }
 
-/* Indicadores (cada um leva a cor do seu status) */
+
 .kpi { display: block; width: 100%; text-align: left; background: rgba(30,41,59,.72); border: 1px solid rgba(51,65,85,.85); border-left: 3px solid var(--kc, #3b82f6); border-radius: .875rem; padding: .875rem 1rem; }
 button.kpi { cursor: pointer; transition: background .15s; }
 button.kpi:hover { background: rgba(51,65,85,.6); }
 .kpi[aria-pressed="true"] { background: rgba(51,65,85,.8); box-shadow: 0 0 0 2px var(--kc); }
 
-/* Leituras do recorte */
+
 .ins { border-left: 3px solid var(--ic, #3b82f6); padding: .125rem 0 .125rem .75rem; line-height: 1.5; }
 .ins-ok { --ic: #10b981; } .ins-warn { --ic: #f59e0b; } .ins-info { --ic: #3b82f6; }
 
-/* Mosaico de clientes: ativos e pendências são preenchidos; quem saiu fica vazado (não depende só de cor) */
+
 .grid-mosaico { display: flex; flex-wrap: wrap; gap: max(3px, calc(var(--sq) * .22)); --sq: 18px; }
 .sq, .sw { width: var(--sq, 12px); height: var(--sq, 12px); border-radius: 3px; background: var(--faint); display: inline-block; flex: none; }
 .sq { opacity: 0; animation: pop .35s ease-out forwards; animation-delay: min(calc(var(--i) * 2ms), 700ms); cursor: pointer; transition: opacity .15s; }
@@ -58,7 +58,7 @@ button.kpi:hover { background: rgba(51,65,85,.6); }
 th button { display: inline-flex; align-items: center; gap: .375rem; font: inherit; color: inherit; cursor: pointer; }
 th button:hover { color: #e2e8f0; }
 
-/* Painel de seleção múltipla de cidades */
+
 .city-row { display: flex; align-items: center; gap: .5rem; padding: .375rem .5rem; border-radius: .5rem; font-size: 12px; color: #cbd5e1; cursor: pointer; }
 .city-row:hover { background: #1e293b; }
 .city-row input { accent-color: #3b82f6; width: 14px; height: 14px; flex: none; }
@@ -66,12 +66,12 @@ th button:hover { color: #e2e8f0; }
 .city-row.hide { display: none; }
 #cidade-panel { background: #0f172a; } /* opaco: sobrepõe o conteúdo atrás do painel */
 
-/* Abas */
+
 .tab-btn { display: inline-flex; align-items: center; gap: .5rem; font-size: 13px; font-weight: 600; color: #94a3b8; padding: .625rem 1rem; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; background: none; border-left: none; border-right: none; border-top: none; }
 .tab-btn:hover { color: #e2e8f0; }
 .tab-btn[aria-selected="true"] { color: #fff; border-bottom-color: #3b82f6; }
 
-/* Mapa (Leaflet) — painel analítico */
+
 .leaflet-container { background: #0b1220; font-family: 'Instrument Sans', system-ui, sans-serif; border-radius: .9rem; overflow: hidden; }
 .leaflet-control-zoom { border: 1px solid #334155 !important; border-radius: .65rem !important; overflow: hidden; box-shadow: 0 10px 24px rgba(0,0,0,.28) !important; }
 .leaflet-control-zoom a { background: #172033 !important; color: #e2e8f0 !important; border-color: #334155 !important; }
@@ -82,7 +82,7 @@ th button:hover { color: #e2e8f0; }
 .leaflet-popup-tip { background: #0f172a !important; }
 .leaflet-popup-content { font-size: 12px !important; line-height: 1.55 !important; margin: .8rem 1rem !important; min-width: 190px; }
 .leaflet-popup-close-button { color: #94a3b8 !important; }
-/* Mapa: aparência inspirada em mapas modernos (Google Maps), sem usar tiles proprietários do Google. */
+
 .map-toolbar { background: rgba(255,255,255,.96); color:#334155; border: 1px solid rgba(15,23,42,.12); box-shadow: 0 4px 14px rgba(15,23,42,.20); backdrop-filter: blur(8px); }
 .map-toolbar .seg { background:#f8fafc; border-color:#cbd5e1; }
 .map-toolbar .seg button { color:#64748b; }
@@ -113,7 +113,7 @@ th button:hover { color: #e2e8f0; }
 .map-stat { background:rgba(15,23,42,.55); border:1px solid rgba(51,65,85,.7); border-radius:.75rem; padding:.7rem .8rem; }
 .map-stat-value { font-family:'Bricolage Grotesque',sans-serif; font-size:1.2rem; font-weight:800; color:#fff; line-height:1.1; }
 
-/* Tooltip do mosaico */
+
 #tip { position: fixed; z-index: 60; pointer-events: none; max-width: 260px; background: #0f172a; color: #f8fafc; padding: 8px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,.5); }
 #tip[hidden] { display: none; }
 
